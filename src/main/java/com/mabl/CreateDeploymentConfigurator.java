@@ -32,9 +32,9 @@ public class CreateDeploymentConfigurator extends AbstractTaskConfigurator {
             @Nullable final TaskDefinition previousTaskDefinition
     ) {
         final Map<String, String> config = super.generateTaskConfigMap(params, previousTaskDefinition);
-        config.put("restApiKey", params.getString("restApiKey"));
-        config.put("environmentId", params.getString("environmentId"));
-        config.put("applicationId", params.getString("applicationId"));
+        for(Map.Entry<String, Object> entry : params.getParameters().entrySet()) {
+            config.put(entry.getKey(), params.getString(entry.getKey()));
+        }
         return config;
     }
 
@@ -45,6 +45,8 @@ public class CreateDeploymentConfigurator extends AbstractTaskConfigurator {
         context.put("restApiKey", "");
         context.put("environmentId", "");
         context.put("applicationId", "");
+        context.put("continueOnPlanFailure", "");
+        context.put("continueOnApiFailure", "");
     }
 
     @Override
@@ -59,6 +61,8 @@ public class CreateDeploymentConfigurator extends AbstractTaskConfigurator {
         context.put("environmentsList", getEnvironmentsList(restApiKey));
         context.put("applicationId", taskDefinition.getConfiguration().get("applicationId"));
         context.put("applicationsList", getApplicationsList(restApiKey));
+        context.put("continueOnPlanFailure", taskDefinition.getConfiguration().get("continueOnPlanFailure"));
+        context.put("continueOnApiFailure", taskDefinition.getConfiguration().get("continueOnApiFailure"));
     }
 
     @Override

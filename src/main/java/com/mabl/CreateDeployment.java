@@ -36,6 +36,8 @@ public class CreateDeployment implements TaskType {
         final String formApiKey = taskContext.getConfigurationMap().get("restApiKey");
         final String environmentId = taskContext.getConfigurationMap().get("environmentId");
         final String applicationId = taskContext.getConfigurationMap().get("applicationId");
+        final boolean continueOnPlanFailure = taskContext.getConfigurationMap().getAsBoolean("continueOnPlanFailure");
+        final boolean continueOnApiFailure = taskContext.getConfigurationMap().getAsBoolean("continueOnApiFailure");
         ExecutionResult executionResult;
 
         try (RestApiClient apiClient = new RestApiClient(MablConstants.MABL_REST_API_BASE_URL, formApiKey)) {

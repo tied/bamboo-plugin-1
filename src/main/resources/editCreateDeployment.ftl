@@ -17,6 +17,9 @@
     emptyOption="true"
 /]
 
+[@ww.checkbox labelKey='createdeployment.continueOnPlanFailure.label' name='continueOnPlanFailure' toggle='true' /]
+[@ww.checkbox labelKey='createdeployment.continueOnApiFailure.label' name='continueOnApiFailure' toggle='true' /]
+
 <script type="text/javascript">
     function populateDropdowns(event) {
         var getData = {"ACTION" : "environments",  "restApiKey" : event.target.value };
