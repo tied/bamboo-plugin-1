@@ -1,0 +1,22 @@
+- type: serial
+  steps:
+  - name: test
+    exclude: ^[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+$
+    service: mabl-bamboo-build
+    command: atlas-mvn test
+  - name: package
+    exclude: ^[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+$
+    service: mabl-bamboo-build
+    command: atlas-package
+  - name: deploy
+    tag: ^(master|[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+)$
+    service: mabl-bamboo-deploy
+    command: codeship/bin/codeship-gcp-deploy.sh
+  - name: mabl-notification
+    tag: ^(master|[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+)$
+    service: mabl-bamboo-deploy
+    command: codeship/bin/codeship-mabl-notification.sh
+  - name: cleanup
+    tag: ^(master|[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+)$
+    service: mabl-bamboo-deploy
+    command: codeship/bin/codeship-gcp-cleanup.sh

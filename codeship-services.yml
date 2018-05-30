@@ -1,0 +1,7 @@
+mabl-build:
+  build:
+    image: mabl/bamboo-build
+    dockerfile: codeship/docker/build-dockerfile
+  encrypted_env_file: codeship/env/codeship.env.encrypted
+  cached: true
+

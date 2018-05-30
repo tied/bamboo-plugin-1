@@ -6,3 +6,8 @@
 # Maven
 log/
 target/
+
+# Codeship
+*.aes
+*.env
+*.decrypted
