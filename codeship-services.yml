@@ -1,4 +1,4 @@
-mabl-build:
+mabl-bamboo:
   build:
     image: mabl/bamboo-build
     dockerfile: codeship/docker/build-dockerfile
