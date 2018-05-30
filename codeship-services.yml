@@ -1,6 +1,6 @@
 mabl-bamboo:
   build:
-    image: api-build-openjdk8
+    image: mabl/api-build-openjdk8
     dockerfile: codeship/docker/build-dockerfile
   encrypted_env_file: codeship/env/codeship.env.encrypted
   cached: true
