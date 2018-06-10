@@ -2,28 +2,32 @@ package com.mabl;
 
 import com.atlassian.bamboo.build.logger.BuildLogger;
 import com.atlassian.bamboo.build.test.TestCollationService;
-import com.atlassian.bamboo.build.test.TestReportProvider;
 import com.atlassian.bamboo.task.TaskContext;
 import com.atlassian.bamboo.task.TaskResult;
 import com.atlassian.bamboo.task.TaskResultBuilder;
 import com.atlassian.bamboo.task.TaskType;
 import com.atlassian.plugin.spring.scanner.annotation.component.Scanned;
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
-import com.atlassian.sal.api.message.I18nResolver;
 import com.mabl.domain.CreateDeploymentResult;
 import com.mabl.domain.ExecutionResult;
 import org.jetbrains.annotations.NotNull;
 
+import static com.mabl.MablConstants.APPLICATION_ID_FIELD;
+import static com.mabl.MablConstants.COMPLETE_STATUSES;
+import static com.mabl.MablConstants.ENVIRONMENT_ID_FIELD;
+import static com.mabl.MablConstants.EXECUTION_STATUS_POLLING_INTERNAL_MILLISECONDS;
+import static com.mabl.MablConstants.MABL_LOG_OUTPUT_PREFIX;
+import static com.mabl.MablConstants.MABL_REST_API_BASE_URL;
+import static com.mabl.MablConstants.REST_API_KEY_FIELD;
+import static org.apache.commons.lang.StringUtils.isEmpty;
+
 @Scanned
 public class CreateDeployment implements TaskType {
-    private final I18nResolver i18nResolver;
     private final TestCollationService testCollationService;
 
     public CreateDeployment(
-            @ComponentImport I18nResolver i18nResolver,
             @ComponentImport TestCollationService testCollationService
     ) {
-        this.i18nResolver = i18nResolver;
         this.testCollationService = testCollationService;
     }
 
@@ -33,22 +37,22 @@ public class CreateDeployment implements TaskType {
         final BuildLogger buildLogger = taskContext.getBuildLogger();
         final TaskResultBuilder taskResultBuilder = TaskResultBuilder.newBuilder(taskContext);
         final MablOutputProvider mablOutputProvider = new MablOutputProvider();
-        final String formApiKey = taskContext.getConfigurationMap().get("restApiKey");
-        final String environmentId = taskContext.getConfigurationMap().get("environmentId");
-        final String applicationId = taskContext.getConfigurationMap().get("applicationId");
+        final String formApiKey = taskContext.getConfigurationMap().get(REST_API_KEY_FIELD);
+        final String environmentId = taskContext.getConfigurationMap().get(ENVIRONMENT_ID_FIELD);
+        final String applicationId = taskContext.getConfigurationMap().get(APPLICATION_ID_FIELD);
         ExecutionResult executionResult;
 
-        try (RestApiClient apiClient = new RestApiClient(MablConstants.MABL_REST_API_BASE_URL, formApiKey)) {
+        try (RestApiClient apiClient = new RestApiClient(MABL_REST_API_BASE_URL, formApiKey)) {
 
             CreateDeploymentResult deployment = apiClient.createDeploymentEvent(environmentId, applicationId);
-            buildLogger.addBuildLogEntry(createLogLine(false,"Creating deployment with id '%s'", deployment.id));
+            buildLogger.addBuildLogEntry(createLogLine("Creating deployment with id '%s'", deployment.id));
 
             do {
-                Thread.sleep(MablConstants.EXECUTION_STATUS_POLLING_INTERNAL_MILLISECONDS);
+                Thread.sleep(EXECUTION_STATUS_POLLING_INTERNAL_MILLISECONDS);
                 executionResult = apiClient.getExecutionResults(deployment.id);
 
                 if (executionResult == null) {
-                    buildLogger.addErrorLogEntry(createLogLine(true,
+                    buildLogger.addErrorLogEntry(createLogErrorLine(
                             "No deployment event found for id '%s' in Mabl.",
                             deployment.id
                     ));
@@ -61,14 +65,15 @@ public class CreateDeployment implements TaskType {
             } while (!allPlansComplete(executionResult));
 
         } catch (RuntimeException | InterruptedException e) {
-            buildLogger.addErrorLogEntry(createLogLine(true, "Task Execution Exception: '%s'", e.getMessage()));
+            Thread.currentThread().interrupt();
+            buildLogger.addErrorLogEntry(createLogErrorLine("Task Execution Exception: '%s'", e.getMessage()));
             return taskResultBuilder.failed().build();
         }
 
         if (!finalOutputStatusAllSuccesses(executionResult, buildLogger, mablOutputProvider)) {
-            buildLogger.addErrorLogEntry(createLogLine(true, "One or more plans were unsuccessful"));
+            buildLogger.addErrorLogEntry(createLogErrorLine("One or more plans were unsuccessful"));
         } else {
-            buildLogger.addBuildLogEntry(createLogLine(false, "All plans were successful."));
+            buildLogger.addBuildLogEntry(createLogLine("All plans were successful."));
         }
 
         testCollationService.collateTestResults(taskContext, mablOutputProvider);
@@ -81,11 +86,11 @@ public class CreateDeployment implements TaskType {
             final MablOutputProvider outputProvider
     ) {
         boolean allPlansSuccess = true;
-        buildLogger.addBuildLogEntry(createLogLine(false, "The final Plan states in Mabl:"));
+        buildLogger.addBuildLogEntry(createLogLine("The final Plan states in Mabl:"));
         for (ExecutionResult.ExecutionSummary summary : result.executions) {
             final String successState = summary.success ? "SUCCEEDED" : "FAILED";
             if(summary.success) {
-                buildLogger.addBuildLogEntry(createLogLine(false,
+                buildLogger.addBuildLogEntry(createLogLine(
                         "Plan '%s' has %s with state '%s'",
                         safePlanName(summary),
                         successState,
@@ -93,7 +98,7 @@ public class CreateDeployment implements TaskType {
                 ));
             } else {
                 allPlansSuccess = false;
-                buildLogger.addErrorLogEntry(createLogLine(true,
+                buildLogger.addErrorLogEntry(createLogErrorLine(
                         "Plan '%s' has %s with state '%s'",
                         safePlanName(summary),
                         successState,
@@ -117,15 +122,15 @@ public class CreateDeployment implements TaskType {
     private boolean allPlansComplete(final ExecutionResult result) {
         boolean isComplete = true;
         for (ExecutionResult.ExecutionSummary summary : result.executions) {
-            isComplete &= MablConstants.COMPLETE_STATUSES.contains(summary.status.toLowerCase());
+            isComplete &= COMPLETE_STATUSES.contains(summary.status.toLowerCase());
         }
         return isComplete;
     }
 
     private void logAllJourneyExecutionStatuses(final ExecutionResult result, final BuildLogger buildLogger) {
-        buildLogger.addBuildLogEntry(createLogLine(false, "Running Mabl journey(s) status update:"));
-        if(result.executions.size() == 0) {
-            buildLogger.addErrorLogEntry(createLogLine(true, "No executions exists for this plan."));
+        buildLogger.addBuildLogEntry(createLogLine("Running Mabl journey(s) status update:"));
+        if(result.executions.isEmpty()) {
+            buildLogger.addErrorLogEntry(createLogErrorLine("No executions exists for this plan."));
         }
         for (ExecutionResult.ExecutionSummary summary : result.executions) {
             logPlanExecutionStatuses(summary, buildLogger);
@@ -136,13 +141,13 @@ public class CreateDeployment implements TaskType {
             final ExecutionResult.ExecutionSummary planSummary,
             final BuildLogger buildLogger
     ) {
-        buildLogger.addBuildLogEntry(createLogLine(false,
+        buildLogger.addBuildLogEntry(createLogLine(
                 "Plan '%s' is in state '%s'",
                 safePlanName(planSummary),
                 planSummary.status
         ));
         for (ExecutionResult.JourneyExecutionResult journeyResult : planSummary.journeyExecutions) {
-            buildLogger.addBuildLogEntry(createLogLine(false,
+            buildLogger.addBuildLogEntry(createLogLine(
                     "Journey '%s' is in state '%s'",
                     safeJourneyName(planSummary, journeyResult.id),
                     journeyResult.status
@@ -152,11 +157,7 @@ public class CreateDeployment implements TaskType {
 
     private String safePlanName(final ExecutionResult.ExecutionSummary summary) {
         // Defensive treatment of possibly malformed future payloads
-        return summary.plan != null &&
-                summary.plan.name != null &&
-                !summary.plan.name.isEmpty()
-                ? summary.plan.name :
-                "<Unnamed Plan>";
+        return summary.plan != null && !isEmpty(summary.plan.name) ? summary.plan.name : "<Unnamed Plan>";
     }
 
     private String safeJourneyName(
@@ -175,17 +176,23 @@ public class CreateDeployment implements TaskType {
         return journeyName;
     }
 
-    private String createLogLine(boolean isError, String log) {
-        return createLogLine(isError, log, new Object[0]);
+    private String createLogErrorLine(String template, Object... args) {
+        return createLogHelper(true, template, args);
     }
 
-    private String createLogLine(boolean isError, String template, Object... args) {
+    private String createLogLine(String logline) {
+        return createLogHelper(false, logline, (Object[]) new Object[0]);
+    }
+
+    private String createLogLine(String template, Object... args) {
+        return createLogHelper(false, template, args);
+    }
+
+    private String createLogHelper(boolean isError, String template, Object... args) {
         if(isError) {
             template = "ERROR: " + template;
         }
 
-        String prefix = i18nResolver.getText("mabl.task.output.prefix");
-        template = prefix+template;
-        return String.format(template, args);
+        return String.format(MABL_LOG_OUTPUT_PREFIX+template, args);
     }
 }
