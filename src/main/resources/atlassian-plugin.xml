@@ -22,6 +22,19 @@
         <context>bambooPlugin</context>
     </web-resource>
 
+    <xwork key="viewMablOutputPanel" name="View mabl Results">
+        <package name="mablResultView" extends="buildResultView">
+            <action name="viewMablOutputPanel" class="com.mabl.ViewMablOutput">
+                <result name="success" type="freemarker">/templates/viewMablOutput.ftl</result>
+            </action>
+        </package>
+    </xwork>
+
+    <web-item key="Results:\${planKey}-\${buildNumber}" name="mablDeploymentResults" section="chainResults.subMenu/chainResults" weight="80">
+        <label key="Mabl Output"/>
+        <link linkId="Results:\${planKey}-\${buildNumber}">/build/result/viewMablOutputPanel.action?buildKey=${planKey}&amp;buildNumber=${buildNumber}</link>
+    </web-item>
+
    <servlet name="Configurator Servlet" key="configurator" class="com.mabl.ConfiguratorServlet">
        <description>Handles Ajax requests for the Configurator</description>
        <url-pattern>/configurator</url-pattern>

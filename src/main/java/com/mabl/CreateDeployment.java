@@ -109,9 +109,9 @@ public class CreateDeployment implements TaskType {
             for(ExecutionResult.JourneyExecutionResult journeyResult : summary.journeyExecutions) {
                 long duration = summary.stopTime-summary.startTime;
                 if(journeyResult.success) {
-                    outputProvider.addSuccess(safePlanName(summary), safeJourneyName(summary, journeyResult.id), duration);
+                    outputProvider.addSuccess(safePlanName(summary), safeJourneyName(summary, journeyResult.id), duration, journeyResult.appHref);
                 } else {
-                    outputProvider.addFailure(safePlanName(summary), safeJourneyName(summary, journeyResult.id), duration);
+                    outputProvider.addFailure(safePlanName(summary), safeJourneyName(summary, journeyResult.id), duration, journeyResult.appHref);
                 }
             }
         }

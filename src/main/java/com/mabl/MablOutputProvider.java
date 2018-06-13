@@ -29,8 +29,10 @@ public class MablOutputProvider implements TestReportProvider {
         return successfulTestResults.add(testResults);
     }
 
-    public boolean addSuccess(String className, String methodName, long duration) {
-        return addSuccess(new TestResults(className, methodName, duration));
+    public boolean addSuccess(String className, String methodName, long duration, String appHref) {
+        TestResults results = new TestResults(className, methodName, duration);
+        results.setSystemOut(appHref);
+        return addSuccess(results);
     }
 
     public boolean addFailure(TestResults testResults) {
@@ -38,7 +40,9 @@ public class MablOutputProvider implements TestReportProvider {
         return failedTestResults.add(testResults);
     }
 
-    public boolean addFailure(String className, String methodName, long duration) {
-        return addFailure(new TestResults(className, methodName, duration));
+    public boolean addFailure(String className, String methodName, long duration, String appHref) {
+        TestResults results = new TestResults(className, methodName, duration);
+        results.setSystemOut(appHref);
+        return addFailure(results);
     }
 }
